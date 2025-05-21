@@ -16,11 +16,15 @@ const char* password = "seVfjks29B";
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
 
+// Pines touch
+const int touchPin = 32;
+int touchValue = 0;
+const int threshold = 40;
+
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 DHT dht(DHTPIN, DHTTYPE);
 WebServer server(80);
 
-// Variables
 float temperatura = 0.0;
 float humedad = 0.0;
 float tempOptima = 25.0;
@@ -31,10 +35,8 @@ String mensajeEstado = "";
 void caraFeliz() {
   display.clearDisplay();
   display.drawCircle(32, 32, 30, SSD1306_WHITE);
-  display.fillCircle(22, 24, 3, SSD1306_WHITE); // Ojo izquierdo
-  display.fillCircle(42, 24, 3, SSD1306_WHITE); // Ojo derecho
-
-  // Boca feliz (curva con píxeles)
+  display.fillCircle(22, 24, 3, SSD1306_WHITE);
+  display.fillCircle(42, 24, 3, SSD1306_WHITE);
   display.drawPixel(20, 42, SSD1306_WHITE);
   display.drawPixel(24, 44, SSD1306_WHITE);
   display.drawPixel(28, 46, SSD1306_WHITE);
@@ -42,7 +44,6 @@ void caraFeliz() {
   display.drawPixel(36, 46, SSD1306_WHITE);
   display.drawPixel(40, 44, SSD1306_WHITE);
   display.drawPixel(44, 42, SSD1306_WHITE);
-
   display.display();
 }
 
@@ -52,7 +53,7 @@ void caraNeutral() {
   display.drawCircle(32, 32, 30, SSD1306_WHITE);
   display.fillCircle(22, 24, 3, SSD1306_WHITE);
   display.fillCircle(42, 24, 3, SSD1306_WHITE);
-  display.drawLine(20, 42, 44, 42, SSD1306_WHITE); // boca recta
+  display.drawLine(20, 42, 44, 42, SSD1306_WHITE);
   display.display();
 }
 
@@ -62,8 +63,6 @@ void caraTriste() {
   display.drawCircle(32, 32, 30, SSD1306_WHITE);
   display.fillCircle(22, 24, 3, SSD1306_WHITE);
   display.fillCircle(42, 24, 3, SSD1306_WHITE);
-
-  // Boca triste (curva con píxeles)
   display.drawPixel(20, 48, SSD1306_WHITE);
   display.drawPixel(24, 46, SSD1306_WHITE);
   display.drawPixel(28, 44, SSD1306_WHITE);
@@ -71,9 +70,34 @@ void caraTriste() {
   display.drawPixel(36, 44, SSD1306_WHITE);
   display.drawPixel(40, 46, SSD1306_WHITE);
   display.drawPixel(44, 48, SSD1306_WHITE);
+  display.display();
+}
+
+// Cara reactiva (boca abierta con línea horizontal)
+void caraReactiva() {
+  display.clearDisplay();
+  display.drawCircle(32, 32, 30, SSD1306_WHITE);
+
+  // Ojos cerrados: líneas horizontales (en vez de círculos)
+  display.drawLine(17, 24, 27, 24, SSD1306_WHITE); // ojo izquierdo
+  display.drawLine(37, 24, 47, 24, SSD1306_WHITE); // ojo derecho
+
+  // Boca sonriente con boca abierta:
+  // Curva inferior de la boca (sonrisa)
+  display.drawPixel(20, 42, SSD1306_WHITE);
+  display.drawPixel(24, 44, SSD1306_WHITE);
+  display.drawPixel(28, 46, SSD1306_WHITE);
+  display.drawPixel(32, 47, SSD1306_WHITE);
+  display.drawPixel(36, 46, SSD1306_WHITE);
+  display.drawPixel(40, 44, SSD1306_WHITE);
+  display.drawPixel(44, 42, SSD1306_WHITE);
+
+  // Línea horizontal dentro de la boca (simulando boca abierta)
+  display.drawLine(22, 43, 42, 43, SSD1306_WHITE);
 
   display.display();
 }
+
 
 // Página web
 String buildHTML(float tempOptima, float humOptima, String mensaje) {
@@ -117,7 +141,6 @@ window.onload = actualizarDatos;
   return html;
 }
 
-// Ruta /datos
 void handleDatos() {
   String json = "{";
   json += "\"temperatura\":" + String(temperatura, 1) + ",";
@@ -194,6 +217,7 @@ void enviarDatosTCP(float temp, float hum) {
 
 void loop() {
   server.handleClient();
+
   temperatura = dht.readTemperature();
   humedad = dht.readHumidity();
 
@@ -209,8 +233,16 @@ void loop() {
   bool humOk = abs(humedad - humOptima) <= tol;
 
   if (tempOk && humOk) {
-    mensajeEstado = "Condición óptima";
-    caraFeliz();
+    touchValue = touchRead(touchPin);
+    if (touchValue < threshold) {
+      Serial.println("¡Toque detectado en estado óptimo! Modo reactivo activado.");
+      mensajeEstado = "¡Modo reactivo!";
+      caraReactiva();
+      delay(3000);
+    } else {
+      mensajeEstado = "Condición óptima";
+      caraFeliz();
+    }
   } else if (tempOk || humOk) {
     mensajeEstado = tempOk ? "Temp óptima" : "Hum óptima";
     caraNeutral();
