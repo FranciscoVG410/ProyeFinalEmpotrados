@@ -12,7 +12,7 @@ def enviar_config():
             "tempOpt": temp,
             "humOpt": hum
         }
-        response = requests.post(f"{ESP32_IP}/", json=data)
+        response = requests.post(f"{ESP32_IP}/config", json=data)
         if response.status_code == 200:
             messagebox.showinfo("Éxito", "✅ Parámetros enviados correctamente.")
         else:
