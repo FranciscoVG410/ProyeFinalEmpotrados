@@ -134,6 +134,17 @@ void setup() {
   server.on("/", []() {
     server.send(200, "text/html", buildHTML(tempOptima, humOptima, mensajeEstado));
   });
+  server.on("/config", HTTP_POST, [](){
+    if(server.hasArg("plain")){
+      StaticJsonDocument<64> doc;
+      deserializeJson(doc, server.arg("plain"));
+      tempOptima = doc["tempOpt"] | tempOptima;
+      humOptima  = doc["humOpt"]  | humOptima;
+      prefs.putFloat("tOpt", tempOptima);
+      prefs.putFloat("hOpt", humOptima);
+      server.send(200);
+    }
+});
   server.on("/datos", handleDatos);
   server.on("/guardar", handleGuardar);
   server.begin();
