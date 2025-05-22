@@ -14,9 +14,9 @@ def enviar_config():
         }
         response = requests.post(f"{ESP32_IP}/config", json=data)
         if response.status_code == 200:
-            messagebox.showinfo("Éxito", "✅ Parámetros enviados correctamente.")
+            messagebox.showinfo("Éxito", "Parámetros enviados correctamente.")
         else:
-            messagebox.showerror("Error", f"❌ Código: {response.status_code}")
+            messagebox.showerror("Error", f"Código: {response.status_code}")
     except ValueError:
         messagebox.showwarning("Advertencia", "Introduce valores numéricos válidos.")
 
