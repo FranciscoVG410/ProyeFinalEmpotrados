@@ -9,7 +9,7 @@ BAUDIOS       = 115200 #Aqui recibe desde el esp
 DB_CONFIG = {
     "host": "localhost",
     "user": "root",
-    "password": "1234",
+    "password": "63690Val",
     "database": "esp32db"
 }
 # -------------------------------------------------------------------
