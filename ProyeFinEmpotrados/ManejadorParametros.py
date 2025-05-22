@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 import requests
 
-ESP32_IP = "http://192.168.100.50"
+ESP32_IP = "http://192.168.100.39"
 
 def enviar_config():
     try:
