@@ -1,3 +1,19 @@
+/*
+ * @file esp32_monitor_documentado.cpp
+ * @brief Monitor de temperatura y humedad con ESP32 + DHT11, OLED SSD1306 y servidor Web.
+ *
+ * Esta clase permite:
+ *  - Conectarse a una red Wi‑Fi y exponer una página web de configuración/monitor.
+ *  - Medir temperatura y humedad con un sensor DHT11.
+ *  - Mostrar el estado actual en una pantalla OLED (caritas ^_^).
+ *  - Enviar los datos vía TCP y al puerto serie en formato JSON.
+ *  - Detectar toques capacitivos para activar un "modo reactivo" cuando las condiciones son óptimas.
+ *  
+ */
+
+/***********************************
+ *           LIBRERÍAS
+ ***********************************/
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include <WebServer.h>
@@ -6,10 +22,15 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-// WiFi
+/***********************************
+ *          CREDENCIALES Wi‑Fi
+ ***********************************/
 const char* ssid = "MEGACABLE-2.4G-74A5";
 const char* password = "seVfjks29B";
 
+/***********************************
+ *            CONSTANTES
+ ***********************************/
 // Pines
 #define DHTPIN 16
 #define DHTTYPE DHT11
@@ -22,9 +43,9 @@ const int touchPin = 32;
 int touchValue = 0;
 const int threshold = 40;
 
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-DHT dht(DHTPIN, DHTTYPE);
-WebServer server(80);
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); // pantalla olde
+DHT dht(DHTPIN, DHTTYPE); //sensor
+WebServer server(80); // web server
 
 float temperatura = 0.0;
 float humedad = 0.0;
@@ -32,9 +53,24 @@ float tempOptima = 25.0;
 float humOptima = 50.0;
 String mensajeEstado = "";
 
-// Función buildHTML con tu código (igual que antes)
+/***********************************
+ *          FUNCIÓN buildHTML
+ ***********************************
+ * Genera y devuelve dinámicamente el contenido HTML que se sirve en la URL raíz.
+ * Incluye:
+ *  - Lectura periódica de datos mediante fetch('/datos') cada 2 s.
+ *  - Formulario para cambiar valores óptimos (GET en /guardar).
+ *  - Asociación estado‑imagen mediante objeto "imagenes".
+ *
+ * @param tempOptima valor óptimo actual de temperatura
+ * @param humOptima  valor óptimo actual de humedad
+ * @param mensaje    mensaje de estado a mostrar inicialmente
+ * @return String    documento HTML completo listo para enviar
+ */
 String buildHTML(float tempOptima, float humOptima, String mensaje) {
+    // --- Encabezado ---
   String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Monitor ESP32</title>";
+    // --- CSS ---  
   html += "<style>";
   html += "body{font-family:Arial;background:#f0f8ff;text-align:center;margin:20px;}";
   html += "h2{color:#0066cc;}p{font-size:1.2em;}form{margin-top:20px;}";
@@ -42,6 +78,7 @@ String buildHTML(float tempOptima, float humOptima, String mensaje) {
   html += "input[type=submit]{padding:10px 20px;background:#0077cc;color:white;border:none;cursor:pointer;}";
   html += "img {max-width: 150px; margin-top: 10px;}";
   html += "</style>";
+  // --- JS: actualización automática ---
   html += "<script>";
   html += "const imagenes = {";
   html += "\"Condición óptima\": \"https://th.bing.com/th/id/OIP.hOmIUH2xdJgRFw0YFN-ZlwAAAA?rs=1&pid=ImgDetMain\",";
@@ -60,6 +97,7 @@ String buildHTML(float tempOptima, float humOptima, String mensaje) {
   html += "});";
   html += "}, 2000);";
   html += "</script>";
+  // --- Cuerpo ---
   html += "</head><body>";
   html += "<h2>Estado Actual</h2>";
   html += "<p>Temperatura: <span id='temp'>--</span></p>";
@@ -75,6 +113,9 @@ String buildHTML(float tempOptima, float humOptima, String mensaje) {
   return html;
 }
 
+/***********************************
+ *  /datos  →  JSON con mediciones
+ ***********************************/
 void handleDatos() {
   String json = "{";
   json += "\"temperatura\":" + String(temperatura, 1) + ",";
@@ -84,6 +125,9 @@ void handleDatos() {
   server.send(200, "application/json", json);
 }
 
+/***********************************
+ *  /guardar  →  Actualiza valores óptimos
+ ***********************************/
 void handleGuardar() {
   if (server.hasArg("tempOpt")) tempOptima = server.arg("tempOpt").toFloat();
   if (server.hasArg("humOpt")) humOptima = server.arg("humOpt").toFloat();
@@ -91,6 +135,11 @@ void handleGuardar() {
   server.send(303);
 }
 
+/***********************************
+ *              setup()
+ ***********************************
+ * Configura periféricos, Wi‑Fi y rutas del servidor HTTP.
+ */
 void setup() {
   Serial.begin(115200);
   pinMode(2, INPUT_PULLUP);
@@ -202,6 +251,9 @@ void caraReactiva() {
 
 }
 
+/***********************************
+ *  Selección de carita según estado
+ ***********************************/
 void actualizarPantalla() {
   if (mensajeEstado == "Condición óptima") {
     caraFeliz();
@@ -217,6 +269,9 @@ void actualizarPantalla() {
   }
 }
 
+/***********************************
+ *  Envío de mediciones vía TCP
+ ***********************************/
 void enviarDatosTCP(float temp, float hum) {
   WiFiClient tcpClient;
   if (tcpClient.connect("192.168.100.14", 1234)) {  // Cambia IP y puerto
@@ -226,6 +281,9 @@ void enviarDatosTCP(float temp, float hum) {
   }
 }
 
+/***********************************
+ *  Envío de mediciones al puerto serie
+ ***********************************/
 void enviarDatosSerial(float temp, float hum, const String& estado)
 {
   String json = "{\"temp\":";
@@ -239,6 +297,16 @@ void enviarDatosSerial(float temp, float hum, const String& estado)
   Serial.println(json);             // <-- línea completa para Python
 }
 
+/***********************************
+ *              loop()
+ ***********************************
+ * Bucle principal:
+ *  1. Atiende clientes HTTP.
+ *  2. Lee temperatura y humedad.
+ *  3. Actualiza mensajeEstado según rangos y touch.
+ *  4. Actualiza la OLED.
+ *  5. Cada 5 s envía datos por TCP y Serial.
+ */
 void loop() {
   server.handleClient();
 
