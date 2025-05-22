@@ -137,14 +137,20 @@ void setup() {
   server.on("/config", HTTP_POST, [](){
     if(server.hasArg("plain")){
       StaticJsonDocument<64> doc;
-      deserializeJson(doc, server.arg("plain"));
+      DeserializationError error = deserializeJson(doc, server.arg("plain"));
+      if (error) {
+        server.send(400, "application/json", "{\"error\":\"JSON inválido\"}");
+        return;
+      }
+    
       tempOptima = doc["tempOpt"] | tempOptima;
       humOptima  = doc["humOpt"]  | humOptima;
-      prefs.putFloat("tOpt", tempOptima);
-      prefs.putFloat("hOpt", humOptima);
+    
       server.send(200);
-    }
-});
+    } else {
+      server.send(400, "application/json", "{\"error\":\"Falta cuerpo\"}");
+    } 
+  });
   server.on("/datos", handleDatos);
   server.on("/guardar", handleGuardar);
   server.begin();
