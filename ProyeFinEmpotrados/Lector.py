@@ -1,6 +1,7 @@
 import json 
 import time
 import serial
+import matplotlib.pyplot as plt
 import mysql.connector
 from mysql.connector import Error
 
@@ -14,18 +15,43 @@ DB_CONFIG = {
 }
 # -------------------------------------------------------------------
 
-def conectar_mysql():
+def conectar_mysql():   
     return mysql.connector.connect(**DB_CONFIG)
+
+def obtener_estados():
+    try:
+        conn = conectar_mysql()
+        cur = conn.cursor()
+        cur.execute("SELECT estado, COUNT(*) FROM mediciones GROUP BY estado")
+        resultados = cur.fetchall()
+        cur.close()
+        conn.close()
+        return resultados
+    except Error as e:
+        print(e)
+        return []
 
 def insertar_medicion(cur, temp, hum, estado):
     sql = ("INSERT INTO mediciones (temperatura, humedad, estado) "
            "VALUES (%s, %s, %s)")
     cur.execute(sql, (temp, hum, estado))
 
+def graficar_estados(estados):
+    etiquetas = [estado[0] for estado in estados]
+    cantidades = [estado[1] for estado in estados]
+
+    plt.figure(figsize=(8, 6))
+    plt.pie(cantidades, labels=etiquetas)
+    plt.show()
+
 def main():
     print("Abriendo puerto {} a {} baud…".format(PUERTO_SERIAL, BAUDIOS))
     ser = serial.Serial(PUERTO_SERIAL, BAUDIOS, timeout=2)
     time.sleep(2)  # pequeña pausa para estabilizar el puerto
+
+    estados = obtener_estados()
+    graficar_estados(estados)
+
 
     try:
         conn = conectar_mysql()
