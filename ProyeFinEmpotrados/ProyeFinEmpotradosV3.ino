@@ -7,8 +7,8 @@
 #include <Adafruit_SSD1306.h>
 
 // WiFi
-const char* ssid = "MEGACABLE-2.4G-74A5";
-const char* password = "seVfjks29B";
+const char* ssid = "HONOR X7a D007";
+const char* password = "ismaguapo";
 
 // Pines
 #define DHTPIN 16
